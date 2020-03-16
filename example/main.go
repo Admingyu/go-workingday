@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/Admingyu/go-workingday"
 	"log"
+	"time"
 )
 
 func main() {
-	log.Println("example")
+	log.Println(workingday.IsWorkDay(time.Now()))
 }

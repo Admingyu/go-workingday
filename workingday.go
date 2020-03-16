@@ -47,6 +47,8 @@ func FillCalandar() calandarBody {
 
 // 判断今天是不是工作日
 func IsWorkDay(dateIn time.Time) (bool, string) {
+	//dataIn 当前时间
+	//返回参数：是否是工作日（true：上班， false：不上班），当前状态：（NORMAL：正常，WORK：调休上班，REST：假期）
 
 	// 计算到期日期上个月的日期
 
@@ -79,11 +81,9 @@ func IsWorkDay(dateIn time.Time) (bool, string) {
 }
 
 //获取日期月份倒数第三个工作日
-func LastThirdWorkDay(loanDay time.Time) time.Time {
+func LastThirdWorkDay(datetime time.Time) time.Time {
 
-	// 计算到期日期上个月的日期
-	lastMonthDay := time.Now()
-	firstday := time.Date(lastMonthDay.Year(), lastMonthDay.Month(), 1, 0, 0, 0, 0, time.Local)
+	firstday := time.Date(datetime.Year(), datetime.Month(), 1, 0, 0, 0, 0, time.Local)
 	lastday := firstday.AddDate(0, 1, 0).Add(time.Second * -1)
 
 	Calandar := FillCalandar()
@@ -118,8 +118,4 @@ func LastThirdWorkDay(loanDay time.Time) time.Time {
 	}
 
 	return workdays[2]
-}
-
-func main() {
-	log.Println("hello")
 }
