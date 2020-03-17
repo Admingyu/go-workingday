@@ -15,10 +15,10 @@ type dayType struct {
 }
 
 type holidaysType struct {
-	Cn []dayType   `json:"cn"`
-	Hk interface{} `json:"hk"`
-	Ma interface{} `json:"ma"`
-	Tw interface{} `json:"tw"`
+	Cn []dayType `json:"cn"`
+	Hk []dayType `json:"hk"`
+	Ma []dayType `json:"ma"`
+	Tw []dayType `json:"tw"`
 }
 
 type calandarBody struct {
@@ -46,18 +46,31 @@ func FillCalandar() calandarBody {
 }
 
 // 判断今天是不是工作日
-func IsWorkDay(dateIn time.Time) (bool, string) {
+func IsWorkDay(dateIn time.Time, country string) (bool, string) {
 	//dataIn 当前时间
+	// country 地区（CN：中国大陆。 HK：中国香港， MA：中国澳门， TW:中国台湾）
 	//返回参数：是否是工作日（true：上班， false：不上班），当前状态：（NORMAL：正常，WORK：调休上班，REST：假期）
 
 	// 计算到期日期上个月的日期
 
 	Calandar := FillCalandar()
 	var needWork bool
+	var holidayData []dayType
 	lastdayStr := dateIn.Format("20060102")
+
+	if country == "CN" {
+		holidayData = Calandar.Holidays.Cn
+	} else if country == "HK" {
+		holidayData = Calandar.Holidays.Hk
+	} else if country == "MA" {
+		holidayData = Calandar.Holidays.Ma
+	} else if country == "TW" {
+		holidayData = Calandar.Holidays.Tw
+	}
+
 	// 调休状态：“NORMAL”：未调休，“REST”：调成休息， “WORK”：调成上班
 	shiftStatus := "NORMAL"
-	for _, v := range Calandar.Holidays.Cn {
+	for _, v := range holidayData {
 		if lastdayStr == fmt.Sprintf("%d", v.Date) {
 			if v.Status == 0 {
 				shiftStatus = "REST"
