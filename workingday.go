@@ -21,23 +21,22 @@ type holidaysType struct {
 	Tw []dayType `json:"tw"`
 }
 
-type calandarBody struct {
+type calendarBody struct {
 	NationalHoliday interface{}   `json:"national_holiday"`
 	Holidays        *holidaysType `json:"holidays"`
 }
 
 // 获取假日表并解析
-func FillCalandar() calandarBody {
+func FillCalendar() calendarBody {
 	resp, err := http.Get("http://pc.suishenyun.net/peacock/api/h5/festival")
-
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	defer resp.Body.Close()
 	body_s, err := ioutil.ReadAll(resp.Body)
 
-	cb := calandarBody{}
+	cb := calendarBody{}
 	err = json.Unmarshal(body_s, &cb)
 	if err != nil {
 		log.Fatalln(err)
@@ -45,28 +44,17 @@ func FillCalandar() calandarBody {
 	return cb
 }
 
-// 判断今天是不是工作日
-func IsWorkDay(dateIn time.Time, country string) (bool, string) {
-	//dataIn 当前时间
-	// country 地区（CN：中国大陆。 HK：中国香港， MA：中国澳门， TW:中国台湾）
-	//返回参数：是否是工作日（true：上班， false：不上班），当前状态：（NORMAL：正常，WORK：调休上班，REST：假期）
+// 判断今天是不是工作日:
+// dataIn 当前时间
+// region 地区（CN：中国大陆。 HK：中国香港， MA：中国澳门， TW:中国台湾）
+// 返回参数：是否是工作日（true：上班， false：不上班），当前状态：（NORMAL：正常，WORK：调休上班，REST：假期）
+func IsWorkDay(dateIn time.Time, region string) (bool, string) {
 
 	// 计算到期日期上个月的日期
-
-	Calandar := FillCalandar()
 	var needWork bool
 	var holidayData []dayType
 	lastdayStr := dateIn.Format("20060102")
-
-	if country == "CN" {
-		holidayData = Calandar.Holidays.Cn
-	} else if country == "HK" {
-		holidayData = Calandar.Holidays.Hk
-	} else if country == "MA" {
-		holidayData = Calandar.Holidays.Ma
-	} else if country == "TW" {
-		holidayData = Calandar.Holidays.Tw
-	}
+	holidayData = GetRegionHolidays(region)
 
 	// 调休状态：“NORMAL”：未调休，“REST”：调成休息， “WORK”：调成上班
 	shiftStatus := "NORMAL"
@@ -95,18 +83,22 @@ func IsWorkDay(dateIn time.Time, country string) (bool, string) {
 
 //获取日期月份倒数第三个工作日
 func LastThirdWorkDay(datetime time.Time) time.Time {
+	return NthWorkdayFromLast(datetime, 3, "CN")
+}
+
+//获取指定日期所属月份的倒数第n个工作日
+func NthWorkdayFromLast(datetime time.Time, n int, region string) time.Time {
 
 	firstday := time.Date(datetime.Year(), datetime.Month(), 1, 0, 0, 0, 0, time.Local)
 	lastday := firstday.AddDate(0, 1, 0).Add(time.Second * -1)
-
-	Calandar := FillCalandar()
+	holidayData := GetRegionHolidays(region)
 
 	var workdays []time.Time
-	for len(workdays) < 3 {
+	for len(workdays) < n {
 		lastdayStr := lastday.Format("20060102")
 		// 调休状态：“NORMAL”：未调休，“REST”：调成休息， “WORK”：调成上班
 		shiftStatus := "NORMAL"
-		for _, v := range Calandar.Holidays.Cn {
+		for _, v := range holidayData {
 			if lastdayStr == fmt.Sprintf("%d", v.Date) {
 				if v.Status == 0 {
 					shiftStatus = "REST"
@@ -114,14 +106,12 @@ func LastThirdWorkDay(datetime time.Time) time.Time {
 					shiftStatus = "WORK"
 					workdays = append(workdays, lastday)
 				}
-				// log.Println(lastdayStr, shiftStatus)
 				break
 			}
 		}
 
 		// 未调休,并且不是周六或者周日
 		if shiftStatus == "NORMAL" && lastday.Weekday() != time.Sunday && lastday.Weekday() != time.Saturday {
-			// log.Println(shiftStatus, lastdayStr)
 			shiftStatus = "WORK"
 			workdays = append(workdays, lastday)
 		} else if shiftStatus == "NORMAL" {
@@ -130,5 +120,18 @@ func LastThirdWorkDay(datetime time.Time) time.Time {
 		lastday = lastday.AddDate(0, 0, -1)
 	}
 
-	return workdays[2]
+	return workdays[n-1]
+}
+
+// 获取某个地区假日数据
+// region: 地区（CN：中国大陆。 HK：中国香港， MA：中国澳门， TW:中国台湾）
+func GetRegionHolidays(region string) []dayType {
+	calendar := FillCalendar()
+	regionCalMap := map[string][]dayType{
+		"CN": calendar.Holidays.Cn,
+		"HK": calendar.Holidays.Hk,
+		"MA": calendar.Holidays.Ma,
+		"TW": calendar.Holidays.Tw,
+	}
+	return regionCalMap[region]
 }
